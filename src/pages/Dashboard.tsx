@@ -13,7 +13,7 @@ interface Event {
   city: string;
 }
 
-const cityList = ['Hồ Chí Minh', 'Hà Nội'];
+
 
 function Dashboard() {
   const [userCity, setUserCity] = useState('Hồ Chí Minh');
@@ -22,61 +22,85 @@ function Dashboard() {
   const [activeTab, setActiveTab] = useState<'all' | 'my'>('all');
   const navigate = useNavigate();
 
+  const [events, setEvents] = useState<Event[]>([]);
+
   useEffect(() => {
     setLoading(true);
     setTimeout(() => {
       const savedUserData = localStorage.getItem('onboardingData');
+      let userRegisteredCity = 'Hồ Chí Minh'; // default fallback
+      
       if (savedUserData) {
         const userData = JSON.parse(savedUserData);
         if (userData.city) {
-          setUserCity(userData.city);
+          // Map the onboarding city format to match event city format
+          if (userData.city === 'TP. Hồ Chí Minh') {
+            userRegisteredCity = 'Hồ Chí Minh';
+          } else if (userData.city === 'Hà Nội') {
+            userRegisteredCity = 'Hà Nội';
+          } else {
+            userRegisteredCity = userData.city;
+          }
         }
+      }
+      
+      setUserCity(userRegisteredCity);
+      
+      // Load events from localStorage or use mock data
+      const savedEvents = localStorage.getItem('dashboardEvents');
+      if (savedEvents) {
+        setEvents(JSON.parse(savedEvents));
+      } else {
+        // TODO(stagewise): Replace with real data from backend
+        const mockEvents: Event[] = [
+          {
+            id: '1',
+            date: '2024-01-17',
+            time: '19:00',
+            venue: 'Nhà hàng The Deck',
+            address: '38 Nguyễn Ư Dĩ, Q2',
+            price: 350000,
+            availableSeats: 12,
+            totalSeats: 35,
+            city: 'Hồ Chí Minh'
+          },
+          {
+            id: '2',
+            date: '2024-01-24',
+            time: '19:00',
+            venue: 'Rooftop Garden',
+            address: '123 Lê Lợi, Q1',
+            price: 420000,
+            availableSeats: 0,
+            totalSeats: 28,
+            city: 'Hồ Chí Minh'
+          },
+          {
+            id: '3',
+            date: '2024-01-17',
+            time: '19:00',
+            venue: 'Madame Hiên',
+            address: '15 Chân Cầm, Hoàn Kiếm',
+            price: 380000,
+            availableSeats: 15,
+            totalSeats: 42,
+            city: 'Hà Nội'
+          }
+        ];
+        setEvents(mockEvents);
+        localStorage.setItem('dashboardEvents', JSON.stringify(mockEvents));
       }
       setLoading(false);
     }, 500);
   }, []);
 
-  // TODO(stagewise): Replace with real data from backend
-  const mockEvents: Event[] = [
-    {
-      id: '1',
-      date: '2024-01-17',
-      time: '19:00',
-      venue: 'Nhà hàng The Deck',
-      address: '38 Nguyễn Ư Dĩ, Q2',
-      price: 350000,
-      availableSeats: 12,
-      totalSeats: 35,
-      city: 'Hồ Chí Minh'
-    },
-    {
-      id: '2',
-      date: '2024-01-24',
-      time: '19:00',
-      venue: 'Rooftop Garden',
-      address: '123 Lê Lợi, Q1',
-      price: 420000,
-      availableSeats: 0,
-      totalSeats: 28,
-      city: 'Hồ Chí Minh'
-    },
-    {
-      id: '3',
-      date: '2024-01-17',
-      time: '19:00',
-      venue: 'Madame Hiên',
-      address: '15 Chân Cầm, Hoàn Kiếm',
-      price: 380000,
-      availableSeats: 15,
-      totalSeats: 42,
-      city: 'Hà Nội'
-    }
-  ];
+
 
   // Giả lập: user đã đăng ký event id 1
   const myEventIds = ['1'];
-  const filteredEvents = mockEvents.filter(event => event.city === userCity);
-  const myEvents = mockEvents.filter(e => myEventIds.includes(e.id) && e.city === userCity);
+  // Only filter events if userCity is set (to avoid showing events from wrong city during loading)
+  const filteredEvents = userCity ? events.filter(event => event.city === userCity) : [];
+  const myEvents = userCity ? events.filter(e => myEventIds.includes(e.id) && e.city === userCity) : [];
   const showEvents = activeTab === 'all' ? filteredEvents : myEvents;
 
   const formatDate = (dateString: string) => {
@@ -99,8 +123,13 @@ function Dashboard() {
     navigate(`/book/${eventId}`);
   };
 
-  const handleCityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setUserCity(e.target.value);
+
+
+  const refreshEvents = () => {
+    const savedEvents = localStorage.getItem('dashboardEvents');
+    if (savedEvents) {
+      setEvents(JSON.parse(savedEvents));
+    }
   };
 
   return (
@@ -117,19 +146,15 @@ function Dashboard() {
           </button>
         </div>
 
-        {/* User's City Display + Chọn thành phố */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-600">Thành phố của bạn:</span>
-          <select
-            value={userCity}
-            onChange={handleCityChange}
-            className="px-3 py-1 bg-pink-100 text-pink-700 rounded-full text-sm font-medium focus:outline-none"
-          >
-            {cityList.map(city => (
-              <option key={city} value={city}>📍 {city}</option>
-            ))}
-          </select>
-        </div>
+        {/* User's City Display */}
+        {userCity && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Thành phố của bạn:</span>
+            <div className="px-3 py-1 bg-pink-100 text-pink-700 rounded-full text-sm font-medium">
+              📍 {userCity}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Main Content */}
@@ -160,11 +185,13 @@ function Dashboard() {
 
         {/* Events List */}
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">
-            {activeTab === 'all'
-              ? `Sự kiện tại ${userCity}`
-              : `Sự kiện bạn đã đăng ký tại ${userCity}`}
-          </h3>
+          {userCity && (
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              {activeTab === 'all'
+                ? `Sự kiện tại ${userCity}`
+                : `Sự kiện bạn đã đăng ký tại ${userCity}`}
+            </h3>
+          )}
           
           {loading ? (
             <div className="text-center text-gray-400 py-12">Đang tải dữ liệu...</div>
@@ -228,10 +255,22 @@ function Dashboard() {
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
               <div className="text-gray-400 mb-2">🍽️</div>
               <p className="text-gray-600">
-                {activeTab === 'all'
-                  ? `Chưa có sự kiện nào tại ${userCity}`
-                  : `Bạn chưa đăng ký sự kiện nào tại ${userCity}`}
+                {userCity ? (
+                  activeTab === 'all'
+                    ? `Chưa có sự kiện nào tại ${userCity}`
+                    : `Bạn chưa đăng ký sự kiện nào tại ${userCity}`
+                ) : (
+                  'Vui lòng hoàn tất thông tin hồ sơ để xem sự kiện'
+                )}
               </p>
+              {!userCity && (
+                <button
+                  onClick={() => navigate('/onboarding')}
+                  className="mt-4 px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition"
+                >
+                  Hoàn tất hồ sơ
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -242,7 +281,7 @@ function Dashboard() {
         <div className="flex justify-around">
           <button
             className="flex flex-col items-center gap-1"
-            onClick={() => window.location.reload()}
+            onClick={refreshEvents}
           >
             <div className="w-6 h-6 text-pink-500">🏠</div>
             <span className="text-xs font-medium text-pink-500">Trang Chính</span>

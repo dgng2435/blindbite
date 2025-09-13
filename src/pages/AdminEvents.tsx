@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 interface Event {
@@ -18,46 +18,68 @@ function AdminEvents() {
   const navigate = useNavigate();
   const [selectedTab, setSelectedTab] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [formData, setFormData] = useState({
+    venue: '',
+    address: '',
+    city: 'Hồ Chí Minh',
+    date: '',
+    time: '19:00',
+    price: '',
+    totalSeats: '',
+    description: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // TODO(stagewise): Replace with real data from backend
-  const mockEvents: Event[] = [
-    {
-      id: '1',
-      date: '2024-01-17',
-      time: '19:00',
-      venue: 'Nhà hàng The Deck',
-      address: '38 Nguyễn Ư Dĩ, Q2',
-      price: 350000,
-      totalSeats: 35,
-      bookedSeats: 23,
-      city: 'Hồ Chí Minh',
-      status: 'published'
-    },
-    {
-      id: '2',
-      date: '2024-01-24',
-      time: '19:00',
-      venue: 'Rooftop Garden',
-      address: '123 Lê Lợi, Q1',
-      price: 420000,
-      totalSeats: 28,
-      bookedSeats: 20,
-      city: 'Hồ Chí Minh',
-      status: 'published'
-    },
-    {
-      id: '3',
-      date: '2024-01-31',
-      time: '19:00',
-      venue: 'Secret Garden',
-      address: '45 Pasteur, Q1',
-      price: 380000,
-      totalSeats: 42,
-      bookedSeats: 0,
-      city: 'Hồ Chí Minh',
-      status: 'draft'
+  // Load events from localStorage or use mock data
+  useEffect(() => {
+    const savedEvents = localStorage.getItem('adminEvents');
+    if (savedEvents) {
+      setEvents(JSON.parse(savedEvents));
+    } else {
+      // TODO(stagewise): Replace with real data from backend
+      const mockEvents: Event[] = [
+        {
+          id: '1',
+          date: '2024-01-17',
+          time: '19:00',
+          venue: 'Nhà hàng The Deck',
+          address: '38 Nguyễn Ư Dĩ, Q2',
+          price: 350000,
+          totalSeats: 35,
+          bookedSeats: 23,
+          city: 'Hồ Chí Minh',
+          status: 'published'
+        },
+        {
+          id: '2',
+          date: '2024-01-24',
+          time: '19:00',
+          venue: 'Rooftop Garden',
+          address: '123 Lê Lợi, Q1',
+          price: 420000,
+          totalSeats: 28,
+          bookedSeats: 20,
+          city: 'Hồ Chí Minh',
+          status: 'published'
+        },
+        {
+          id: '3',
+          date: '2024-01-31',
+          time: '19:00',
+          venue: 'Secret Garden',
+          address: '45 Pasteur, Q1',
+          price: 380000,
+          totalSeats: 42,
+          bookedSeats: 0,
+          city: 'Hồ Chí Minh',
+          status: 'draft'
+        }
+      ];
+      setEvents(mockEvents);
+      localStorage.setItem('adminEvents', JSON.stringify(mockEvents));
     }
-  ];
+  }, []);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -97,8 +119,71 @@ function AdminEvents() {
   };
 
   const filteredEvents = selectedTab === 'all' 
-    ? mockEvents 
-    : mockEvents.filter(event => event.status === selectedTab);
+    ? events 
+    : events.filter(event => event.status === selectedTab);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleCreateEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      const newEvent: Event = {
+        id: Date.now().toString(),
+        venue: formData.venue,
+        address: formData.address,
+        city: formData.city,
+        date: formData.date,
+        time: formData.time,
+        price: parseInt(formData.price),
+        totalSeats: parseInt(formData.totalSeats),
+        bookedSeats: 0,
+        status: 'draft'
+      };
+
+      const updatedEvents = [...events, newEvent];
+      setEvents(updatedEvents);
+      localStorage.setItem('adminEvents', JSON.stringify(updatedEvents));
+      
+      // Also update dashboard events
+      const dashboardEvents = localStorage.getItem('dashboardEvents');
+      const dashboardEventsList = dashboardEvents ? JSON.parse(dashboardEvents) : [];
+      const dashboardEvent = {
+        id: newEvent.id,
+        venue: newEvent.venue,
+        address: newEvent.address,
+        city: newEvent.city,
+        date: newEvent.date,
+        time: newEvent.time,
+        price: newEvent.price,
+        availableSeats: newEvent.totalSeats,
+        totalSeats: newEvent.totalSeats
+      };
+      dashboardEventsList.push(dashboardEvent);
+      localStorage.setItem('dashboardEvents', JSON.stringify(dashboardEventsList));
+
+      // Reset form
+      setFormData({
+        venue: '',
+        address: '',
+        city: 'Hồ Chí Minh',
+        date: '',
+        time: '19:00',
+        price: '',
+        totalSeats: '',
+        description: ''
+      });
+      setShowCreateModal(false);
+    } catch (error) {
+      console.error('Error creating event:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -132,10 +217,10 @@ function AdminEvents() {
         {/* Tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto">
           {[
-            { id: 'all', label: 'Tất cả', count: mockEvents.length },
-            { id: 'published', label: 'Đã xuất bản', count: mockEvents.filter(e => e.status === 'published').length },
-            { id: 'draft', label: 'Nháp', count: mockEvents.filter(e => e.status === 'draft').length },
-            { id: 'completed', label: 'Hoàn thành', count: mockEvents.filter(e => e.status === 'completed').length }
+            { id: 'all', label: 'Tất cả', count: events.length },
+            { id: 'published', label: 'Đã xuất bản', count: events.filter(e => e.status === 'published').length },
+            { id: 'draft', label: 'Nháp', count: events.filter(e => e.status === 'draft').length },
+            { id: 'completed', label: 'Hoàn thành', count: events.filter(e => e.status === 'completed').length }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -220,22 +305,176 @@ function AdminEvents() {
       {/* Create Event Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-6">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">Tạo Event Mới</h3>
-            <p className="text-gray-600 mb-6">
-              Tính năng tạo event chi tiết sẽ được phát triển tiếp theo.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
-              >
-                Đóng
-              </button>
-              <button className="flex-1 px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition">
-                Tiếp tục
-              </button>
-            </div>
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <form onSubmit={handleCreateEvent} className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-800">Tạo Event Mới</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Venue Name */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tên địa điểm *
+                  </label>
+                  <input
+                    type="text"
+                    name="venue"
+                    value={formData.venue}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                    placeholder="Ví dụ: Nhà hàng The Deck"
+                    required
+                  />
+                </div>
+
+                {/* Address */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Địa chỉ *
+                  </label>
+                  <input
+                    type="text"
+                    name="address"
+                    value={formData.address}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                    placeholder="Ví dụ: 38 Nguyễn Ư Dĩ, Q2"
+                    required
+                  />
+                </div>
+
+                {/* City */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Thành phố *
+                  </label>
+                  <select
+                    name="city"
+                    value={formData.city}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                    required
+                  >
+                    <option value="Hồ Chí Minh">Hồ Chí Minh</option>
+                    <option value="Hà Nội">Hà Nội</option>
+                    <option value="Đà Nẵng">Đà Nẵng</option>
+                    <option value="Hải Phòng">Hải Phòng</option>
+                    <option value="Cần Thơ">Cần Thơ</option>
+                    <option value="Nha Trang">Nha Trang</option>
+                    <option value="Huế">Huế</option>
+                    <option value="Vũng Tàu">Vũng Tàu</option>
+                  </select>
+                </div>
+
+                {/* Date and Time */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Ngày *
+                    </label>
+                    <input
+                      type="date"
+                      name="date"
+                      value={formData.date}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Giờ *
+                    </label>
+                    <input
+                      type="time"
+                      name="time"
+                      value={formData.time}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Price and Seats */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Giá vé (VND) *
+                    </label>
+                    <input
+                      type="number"
+                      name="price"
+                      value={formData.price}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                      placeholder="350000"
+                      min="0"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Số chỗ *
+                    </label>
+                    <input
+                      type="number"
+                      name="totalSeats"
+                      value={formData.totalSeats}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                      placeholder="35"
+                      min="1"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Mô tả (tùy chọn)
+                  </label>
+                  <textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    rows={3}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                    placeholder="Mô tả về sự kiện..."
+                  />
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 mt-6 pt-6 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                  disabled={isSubmitting}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition disabled:opacity-50"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Đang tạo...' : 'Tạo Event'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

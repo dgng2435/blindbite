@@ -9,6 +9,14 @@ interface User {
   job: string;
   isFirstTime: boolean;
   trustScore: number;
+  // Onboarding data
+  personalityType?: 'Cảm xúc' | 'Lý trí';
+  lookingFor?: 'Nam' | 'Nữ' | 'Khác' | 'Mở';
+  idealWeekend?: string;
+  dateFood?: string;
+  purpose?: string;
+  relationshipImportant?: string;
+  city?: string;
 }
 
 interface Table {
@@ -28,13 +36,44 @@ function AdminTables() {
     { id: '2', name: 'Rooftop Garden - 24/01', bookedCount: 20 }
   ];
 
+  // TODO(stagewise): Replace with real user data from backend based on event registrations
   const mockUsers: User[] = [
-    { id: 'U001', name: 'Nguyễn Văn A', gender: 'Nam', age: 28, job: 'Công nghệ thông tin', isFirstTime: true, trustScore: 8.5 },
-    { id: 'U002', name: 'Trần Thị B', gender: 'Nữ', age: 25, job: 'Marketing', isFirstTime: false, trustScore: 9.2 },
-    { id: 'U003', name: 'Lê Minh C', gender: 'Nam', age: 30, job: 'Tài chính', isFirstTime: true, trustScore: 7.8 },
-    { id: 'U004', name: 'Phạm Thị D', gender: 'Nữ', age: 27, job: 'Thiết kế', isFirstTime: false, trustScore: 8.9 },
-    { id: 'U005', name: 'Hoàng Văn E', gender: 'Nam', age: 32, job: 'Kinh doanh', isFirstTime: true, trustScore: 8.1 },
-    { id: 'U006', name: 'Vũ Thị F', gender: 'Nữ', age: 24, job: 'Công nghệ thông tin', isFirstTime: false, trustScore: 9.0 }
+    { 
+      id: 'U001', name: 'Nguyễn Văn A', gender: 'Nam', age: 28, job: 'Công nghệ thông tin', 
+      isFirstTime: true, trustScore: 8.5,
+      personalityType: 'Lý trí', lookingFor: 'Nữ', idealWeekend: 'Đi chơi với bạn bè',
+      dateFood: 'Món Nhật/Hàn', purpose: 'Hẹn hò nghiêm túc', relationshipImportant: 'Giao tiếp tốt'
+    },
+    { 
+      id: 'U002', name: 'Trần Thị B', gender: 'Nữ', age: 25, job: 'Marketing', 
+      isFirstTime: false, trustScore: 9.2,
+      personalityType: 'Cảm xúc', lookingFor: 'Nam', idealWeekend: 'Cafe & bánh ngọt',
+      dateFood: 'Món Việt truyền thống', purpose: 'Kết bạn', relationshipImportant: 'Tôn trọng lẫn nhau'
+    },
+    { 
+      id: 'U003', name: 'Lê Minh C', gender: 'Nam', age: 30, job: 'Tài chính', 
+      isFirstTime: true, trustScore: 7.8,
+      personalityType: 'Lý trí', lookingFor: 'Nữ', idealWeekend: 'Ở nhà thư giãn',
+      dateFood: 'Món Âu', purpose: 'Trải nghiệm mới', relationshipImportant: 'Sự tin tương'
+    },
+    { 
+      id: 'U004', name: 'Phạm Thị D', gender: 'Nữ', age: 27, job: 'Thiết kế', 
+      isFirstTime: false, trustScore: 8.9,
+      personalityType: 'Cảm xúc', lookingFor: 'Nam', idealWeekend: 'Khám phá địa điểm mới',
+      dateFood: 'Cafe & bánh ngọt', purpose: 'Hẹn hò nghiêm túc', relationshipImportant: 'Có chung sở thích'
+    },
+    { 
+      id: 'U005', name: 'Hoàng Văn E', gender: 'Nam', age: 32, job: 'Kinh doanh', 
+      isFirstTime: true, trustScore: 8.1,
+      personalityType: 'Lý trí', lookingFor: 'Mở', idealWeekend: 'Tập thể thao',
+      dateFood: 'Đồ ăn nhanh', purpose: 'Mở rộng mối quan hệ', relationshipImportant: 'Hỗ trợ lẫn nhau'
+    },
+    { 
+      id: 'U006', name: 'Vũ Thị F', gender: 'Nữ', age: 24, job: 'Công nghệ thông tin', 
+      isFirstTime: false, trustScore: 9.0,
+      personalityType: 'Cảm xúc', lookingFor: 'Nam', idealWeekend: 'Đọc sách/xem phim',
+      dateFood: 'Món Nhật/Hàn', purpose: 'Kết bạn', relationshipImportant: 'Tất cả đều quan trọng'
+    }
   ];
 
   // Khởi tạo state cho tables từ mockTables
@@ -62,27 +101,123 @@ function AdminTables() {
 
   const [tables, setTables] = useState<Table[]>(initialTables);
 
-  // Xếp bàn tự động: chia đều nam/nữ vào các bàn
-  const handleAutoArrange = () => {
-    const males = mockUsers.filter(u => u.gender === 'Nam');
-    const females = mockUsers.filter(u => u.gender === 'Nữ');
-    const newTables = tables.map(table => ({ ...table, members: [] as User[] }));
+  // Tính compatibility score giữa 2 users
+  const calculateCompatibility = (user1: User, user2: User): number => {
+    let score = 0;
+    
+    // Age compatibility (closer age = higher score)
+    const ageDiff = Math.abs(user1.age - user2.age);
+    if (ageDiff <= 3) score += 2;
+    else if (ageDiff <= 6) score += 1;
+    
+    // Personality balance (opposite types work well together)
+    if (user1.personalityType !== user2.personalityType) score += 1.5;
+    
+    // Common interests
+    if (user1.dateFood === user2.dateFood) score += 1;
+    if (user1.idealWeekend === user2.idealWeekend) score += 0.5;
+    if (user1.purpose === user2.purpose) score += 1;
+    
+    // Gender preference compatibility
+    if ((user1.lookingFor === user2.gender || user1.lookingFor === 'Mở') && 
+        (user2.lookingFor === user1.gender || user2.lookingFor === 'Mở')) {
+      score += 2;
+    }
+    
+    // Trust score factor
+    score += (user1.trustScore + user2.trustScore) / 10;
+    
+    return score;
+  };
 
-    let tableIdx = 0;
-    [...males, ...females].forEach(user => {
-      newTables[tableIdx].members.push(user);
-      tableIdx = (tableIdx + 1) % newTables.length;
+  // Xếp bàn tự động thông minh dựa trên compatibility
+  const handleAutoArrange = () => {
+    const availableUsers = [...mockUsers];
+    const newTables = tables.map(table => ({ ...table, members: [] as User[] }));
+    
+    // Ưu tiên xếp người lần đầu tham gia trước
+    availableUsers.sort((a, b) => {
+      if (a.isFirstTime && !b.isFirstTime) return -1;
+      if (!a.isFirstTime && b.isFirstTime) return 1;
+      return b.trustScore - a.trustScore; // Sau đó sắp xếp theo trust score
     });
+
+    let currentTableIndex = 0;
+    
+    while (availableUsers.length > 0 && currentTableIndex < newTables.length) {
+      const currentTable = newTables[currentTableIndex];
+      
+      if (currentTable.members.length === 0) {
+        // Bàn trống - thêm user đầu tiên
+        const firstUser = availableUsers.shift()!;
+        currentTable.members.push(firstUser);
+      } else if (currentTable.members.length < currentTable.capacity) {
+        // Tìm user tương thích nhất với bàn hiện tại
+        let bestUserIndex = 0;
+        let bestScore = -1;
+        
+        for (let i = 0; i < availableUsers.length; i++) {
+          const candidate = availableUsers[i];
+          
+          // Kiểm tra gender balance
+          const currentMales = currentTable.members.filter(m => m.gender === 'Nam').length;
+          const currentFemales = currentTable.members.filter(m => m.gender === 'Nữ').length;
+          const wouldBeBalanced = Math.abs(
+            (candidate.gender === 'Nam' ? currentMales + 1 : currentMales) - 
+            (candidate.gender === 'Nữ' ? currentFemales + 1 : currentFemales)
+          ) <= 1;
+          
+          if (!wouldBeBalanced && currentTable.members.length >= 2) continue;
+          
+          // Tính tổng compatibility với tất cả members trong bàn
+          let totalScore = 0;
+          for (const member of currentTable.members) {
+            totalScore += calculateCompatibility(candidate, member);
+          }
+          
+          const avgScore = totalScore / currentTable.members.length;
+          if (avgScore > bestScore) {
+            bestScore = avgScore;
+            bestUserIndex = i;
+          }
+        }
+        
+        if (bestScore > -1) {
+          const selectedUser = availableUsers.splice(bestUserIndex, 1)[0];
+          currentTable.members.push(selectedUser);
+        } else {
+          currentTableIndex++;
+        }
+      } else {
+        currentTableIndex++;
+      }
+      
+      // Nếu bàn hiện tại đã đầy, chuyển sang bàn tiếp theo
+      if (currentTable.members.length >= currentTable.capacity) {
+        currentTableIndex++;
+      }
+    }
 
     setTables(newTables);
     setAutoArranged(true);
     setTimeout(() => {
-      alert('Xếp bàn tự động hoàn tất!');
+      alert('Xếp bàn tự động hoàn tất! Đã tối ưu hóa theo độ tương thích.');
     }, 500);
   };
 
-  // Reset bàn về trạng thái trống
-  const handleReset = () => {
+  // Reset một bàn cụ thể về trạng thái trống
+  const handleResetTable = (tableId: number) => {
+    setTables(prevTables => 
+      prevTables.map(table => 
+        table.id === tableId 
+          ? { ...table, members: [] }
+          : table
+      )
+    );
+  };
+
+  // Reset tất cả bàn về trạng thái trống
+  const handleResetAll = () => {
     setTables(tables.map(table => ({ ...table, members: [] })));
     setAutoArranged(false);
   };
@@ -166,7 +301,7 @@ function AdminTables() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span>Cân bằng giới tính (tối đa chênh lệch 1 người)</span>
+              <span>Cân bằng giới tính & sở thích tương thích</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
@@ -174,11 +309,11 @@ function AdminTables() {
             </div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-              <span>Đa dạng nghề nghiệp (tối đa 2 nghề trùng)</span>
+              <span>Tính cách bổ sung (Cảm xúc ↔ Lý trí)</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-              <span>Điểm tin cậy cao được ưu tiên</span>
+              <span>Độ tuổi và mục tiêu phù hợp</span>
             </div>
           </div>
         </div>
@@ -267,9 +402,9 @@ function AdminTables() {
                   </button>
                   <button
                     className="px-3 py-2 text-sm bg-pink-100 text-pink-700 rounded-lg hover:bg-pink-200 transition"
-                    onClick={handleReset}
+                    onClick={() => handleResetTable(table.id)}
                   >
-                    Reset
+                    Reset bàn
                   </button>
                 </div>
               </div>
